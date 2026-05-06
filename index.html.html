@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Duel: Synonyms & Antonyms</title>
+    <style>
+        /* --- STYLING --- */
+        :root {
+            --p1-color: #6c5ce7;
+            --p2-color: #00b894;
+            --accent-orange: #fd9644;
+            --accent-blue: #0984e3;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            /* Vibrant Animated Background */
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            overflow: hidden;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .game-container { 
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 3rem; 
+            border-radius: 30px; 
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3); 
+            text-align: center; 
+            width: 90%;
+            max-width: 500px; 
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            transition: transform 0.3s ease;
+        }
+
+        h1 { color: #2d3436; margin-top: 0; font-weight: 800; letter-spacing: -1px; }
+
+        /* Scoreboard Logic */
+        .scoreboard { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 40px; 
+            gap: 15px;
+        }
+
+        .score { 
+            flex: 1;
+            padding: 15px; 
+            border-radius: 20px; 
+            background: #f1f2f6;
+            border: 3px solid transparent;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            font-weight: bold;
+            color: #636e72;
+        }
+
+        .score.p1-active { border-color: var(--p1-color); background: #efeeff; color: var(--p1-color); transform: scale(1.05); }
+        .score.p2-active { border-color: var(--p2-color); background: #e6fffb; color: var(--p2-color); transform: scale(1.05); }
+
+        /* Game Area */
+        #turn-indicator { 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+            font-size: 0.75rem;
+            margin-bottom: 10px;
+        }
+
+        #word-display { 
+            font-size: 3.5rem; 
+            margin: 0; 
+            color: #2d3436;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .target-text { font-size: 1.2rem; color: #636e72; margin-bottom: 40px; }
+        #target-word { color: #d63031; font-weight: bold; }
+
+        /* Buttons */
+        .buttons { display: flex; gap: 15px; }
+
+        button { 
+            flex: 1;
+            padding: 18px; 
+            font-size: 1.1rem;
+            cursor: pointer; 
+            border: none; 
+            border-radius: 15px; 
+            color: white; 
+            font-weight: bold; 
+            transition: all 0.2s;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.1);
+        }
+
+        .btn-synonym { background: var(--accent-blue); }
+        .btn-synonym:hover { background: #076bc1; transform: translateY(-3px); }
+        
+        .btn-antonym { background: var(--accent-orange); }
+        .btn-antonym:hover { background: #e67e22; transform: translateY(-3px); }
+
+        button:active { transform: translateY(3px); box-shadow: none; }
+
+        .hidden { display: none; }
+
+        /* Result Screen */
+        #winner-text { font-size: 2.5rem; margin-bottom: 10px; }
+        .reset-btn { background: #2d3436; width: 100%; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h1>Word Duel</h1>
+        
+        <div class="scoreboard">
+            <div id="p1-score" class="score">Player 1: 0</div>
+            <div id="p2-score" class="score">Player 2: 0</div>
+        </div>
+
+        <div id="game-box">
+            <p id="turn-indicator" style="color: var(--p1-color);">Player 1's Turn</p>
+            <h2 id="word-display">Word</h2>
+            <p class="target-text">is a(n) <span id="rel-type">...</span> of <strong id="target-word">Target</strong>?</p>
+            
+            <div class="buttons">
+                <button class="btn-synonym" onclick="checkAnswer('Synonym')">Synonym</button>
+                <button class="btn-antonym" onclick="checkAnswer('Antonym')">Antonym</button>
+            </div>
+        </div>
+
+        <div id="result-screen" class="hidden">
+            <h2 id="winner-text">Game Over!</h2>
+            <p id="final-stats" style="font-size: 1.3rem; color: #636e72;"></p>
+            <button class="reset-btn" onclick="resetGame()">New Match</button>
+        </div>
+    </div>
+
+    <script>
+        /* --- GAME LOGIC --- */
+        const questions = [
+            { word: "Courageous", target: "Brave", type: "Synonym" },
+            { word: "Enormous", target: "Tiny", type: "Antonym" },
+            { word: "Rapid", target: "Slow", type: "Antonym" },
+            { word: "Fragile", target: "Delicate", type: "Synonym" },
+            { word: "Artificial", target: "Natural", type: "Antonym" },
+            { word: "Victory", target: "Success", type: "Synonym" },
+            { word: "Grim", target: "Cheerful", type: "Antonym" },
+            { word: "Sufficient", target: "Enough", type: "Synonym" }
+        ];
+
+        let currentPlayer = 1;
+        let scores = { 1: 0, 2: 0 };
+        let currentRound = 0;
+
+        function updateDisplay() {
+            if (currentRound >= questions.length) {
+                showWinner();
+                return;
+            }
+            
+            const q = questions[currentRound];
+            const wordEl = document.getElementById('word-display');
+            const turnEl = document.getElementById('turn-indicator');
+            
+            // Set word content
+            wordEl.innerText = q.word;
+            document.getElementById('target-word').innerText = q.target;
+            
+            // Set turn visuals
+            turnEl.innerText = `Player ${currentPlayer}'s Turn`;
+            turnEl.style.color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+            
+            // Scoreboard highlights
+            document.getElementById('p1-score').className = currentPlayer === 1 ? 'score p1-active' : 'score';
+            document.getElementById('p2-score').className = currentPlayer === 2 ? 'score p2-active' : 'score';
+        }
+
+        function checkAnswer(choice) {
+            const correctAnswer = questions[currentRound].type;
+            
+            if (choice === correctAnswer) {
+                scores[currentPlayer]++;
+                document.getElementById(`p${currentPlayer}-score`).innerText = `Player ${currentPlayer}: ${scores[currentPlayer]}`;
+            }
+
+            // Switch and refresh
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            currentRound++;
+            updateDisplay();
+        }
+
+        function showWinner() {
+            document.getElementById('game-box').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            
+            let resultText = "";
+            if (scores[1] > scores[2]) {
+                resultText = "🏆 Player 1 Wins!";
+            } else if (scores[2] > scores[1]) {
+                resultText = "🏆 Player 2 Wins!";
+            } else {
+                resultText = "🤝 It's a Draw!";
+            }
+            
+            document.getElementById('winner-text').innerText = resultText;
+            document.getElementById('final-stats').innerText = `Final Score: ${scores[1]} to ${scores[2]}`;
+        }
+
+        function resetGame() {
+            scores = { 1: 0, 2: 0 };
+            currentRound = 0;
+            currentPlayer = 1;
+            document.getElementById('p1-score').innerText = "Player 1: 0";
+            document.getElementById('p2-score').innerText = "Player 2: 0";
+            document.getElementById('game-box').classList.remove('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            updateDisplay();
+        }
+
+        // Run on load
+        updateDisplay();
+    </script>
+</body>
+</html>
